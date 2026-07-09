@@ -1,0 +1,88 @@
+{
+  "__inputs": [{ "name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource", "pluginId": "prometheus" }],
+  "title": "DevOps Demo API",
+  "uid":   "devops-demo-api",
+  "tags":  ["devops", "api"],
+  "time":  { "from": "now-1h", "to": "now" },
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Request Rate (req/s)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": "${DS_PROMETHEUS}",
+        "expr": "sum(rate(http_requests_total{job=\"devops-demo-api\"}[5m]))",
+        "legendFormat": "req/s"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "thresholds" },
+        "thresholds": { "steps": [{"color":"green","value":null},{"color":"yellow","value":50},{"color":"red","value":200}] }
+      }}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Error Rate (%)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": "${DS_PROMETHEUS}",
+        "expr": "sum(rate(http_requests_total{job=\"devops-demo-api\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"devops-demo-api\"}[5m])) * 100",
+        "legendFormat": "error %"
+      }],
+      "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "thresholds" },
+        "thresholds": { "steps": [{"color":"green","value":null},{"color":"yellow","value":1},{"color":"red","value":5}] }
+      }}
+    },
+    {
+      "id": 3, "type": "stat", "title": "p95 Latency",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": "${DS_PROMETHEUS}",
+        "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"devops-demo-api\"}[5m])) by (le))",
+        "legendFormat": "p95"
+      }],
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "thresholds" },
+        "thresholds": { "steps": [{"color":"green","value":null},{"color":"yellow","value":0.1},{"color":"red","value":0.5}] }
+      }}
+    },
+    {
+      "id": 4, "type": "stat", "title": "Uptime",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": "${DS_PROMETHEUS}",
+        "expr": "up{job=\"devops-demo-api\"}",
+        "legendFormat": "up"
+      }],
+      "fieldConfig": { "defaults": { "mappings": [{"type":"value","options":{"0":{"text":"DOWN","color":"red"},"1":{"text":"UP","color":"green"}}}] }}
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "HTTP Request Rate by Status",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": "${DS_PROMETHEUS}",
+        "expr": "sum by(status_code) (rate(http_requests_total{job=\"devops-demo-api\"}[5m]))",
+        "legendFormat": "{{status_code}}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }}
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Latency Percentiles",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"devops-demo-api\"}[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"devops-demo-api\"}[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"devops-demo-api\"}[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }}
+    }
+  ]
+}

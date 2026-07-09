@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: staging
+
+resources:
+  - ../../base
+
+namePrefix: staging-
+
+commonLabels:
+  environment: staging
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: devops-demo-api
+  - patch: |-
+      - op: replace
+        path: /data/NODE_ENV
+        value: staging
+    target:
+      kind: ConfigMap
+      name: devops-demo-config
+  - patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.staging.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.staging.example.com
+    target:
+      kind: Ingress
+      name: devops-demo-api
+
+images:
+  - name: ghcr.io/myorg/devops-demo-api
+    newTag: latest

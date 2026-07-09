@@ -1,0 +1,81 @@
+---
+- name: Deploy devops-demo-api
+  hosts: "{{ target_hosts | default('webservers') }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    app_name: devops-demo-api
+    app_version: "{{ version | default('latest') }}"
+    app_port: 3000
+    deploy_dir: /opt/devops-demo
+    image_registry: ghcr.io/myorg
+
+  pre_tasks:
+    - name: Validate required variables
+      assert:
+        that:
+          - app_version is defined
+        fail_msg: "La variable 'version' es requerida. Usar: -e version=1.2.3"
+
+    - name: Print deployment info
+      debug:
+        msg: >
+          Deploying {{ app_name }}:{{ app_version }}
+          to {{ inventory_hostname }} ({{ ansible_host }})
+
+  roles:
+    - webserver
+
+  tasks:
+    - name: Pull new Docker image
+      community.docker.docker_image:
+        name: "{{ image_registry }}/{{ app_name }}"
+        tag: "{{ app_version }}"
+        source: pull
+        force_source: true
+
+    - name: Stop current container (if running)
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        state: stopped
+      ignore_errors: true
+
+    - name: Start new container
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        image: "{{ image_registry }}/{{ app_name }}:{{ app_version }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ app_port }}:3000"
+        env:
+          NODE_ENV: production
+          APP_VERSION: "{{ app_version }}"
+        healthcheck:
+          test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+          interval: 30s
+          timeout: 5s
+          retries: 3
+
+    - name: Wait for container to be healthy
+      community.docker.docker_container_info:
+        name: "{{ app_name }}"
+      register: container_info
+      until: container_info.container.State.Health.Status == "healthy"
+      retries: 10
+      delay: 6
+
+    - name: Verify endpoint responds
+      uri:
+        url: "http://{{ ansible_host }}:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+
+  post_tasks:
+    - name: Log successful deployment
+      lineinfile:
+        path: /var/log/deployments.log
+        line: "{{ ansible_date_time.iso8601 }} | {{ app_name }}:{{ app_version }} deployed to {{ inventory_hostname }} by {{ lookup('env','USER') }}"
+        create: true

@@ -1,0 +1,140 @@
+name: CD — Continuous Delivery
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production]
+      image_tag:
+        description: 'Docker image tag to deploy (default: latest main)'
+        required: false
+
+env:
+  IMAGE_NAME: devops-demo-api
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  # JOB 1: Deploy to Staging
+  # ────────────────────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy → Staging
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://api.staging.example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.image_tag || format('sha-{0}', github.sha) }}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.29.0'
+
+      - name: Configure kubeconfig (staging)
+        run: |
+          echo "${{ secrets.KUBECONFIG_STAGING }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Update image in staging overlay
+        run: |
+          cd kubernetes/overlays/staging
+          sed -i "s|image: .*devops-demo-api.*|image: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}|" kustomization.yaml
+
+      - name: Apply Kubernetes manifests (staging)
+        run: |
+          export KUBECONFIG=kubeconfig
+          kubectl apply -k kubernetes/overlays/staging --namespace=staging
+
+      - name: Wait for rollout
+        run: |
+          export KUBECONFIG=kubeconfig
+          kubectl rollout status deployment/devops-demo-api -n staging --timeout=120s
+
+      - name: Smoke test staging
+        run: |
+          sleep 10
+          curl -f https://api.staging.example.com/health || exit 1
+
+  # ────────────────────────────────────────────────────────────────
+  # JOB 2: Deploy to Production (manual gate)
+  # ────────────────────────────────────────────────────────────────
+  deploy-production:
+    name: Deploy → Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment:
+      name: production
+      url: https://api.example.com
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.image_tag || format('sha-{0}', github.sha) }}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.29.0'
+
+      - name: Configure kubeconfig (production)
+        run: |
+          echo "${{ secrets.KUBECONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Update image in production overlay
+        run: |
+          cd kubernetes/overlays/production
+          sed -i "s|image: .*devops-demo-api.*|image: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}|" kustomization.yaml
+
+      - name: Apply Kubernetes manifests (production)
+        run: |
+          export KUBECONFIG=kubeconfig
+          kubectl apply -k kubernetes/overlays/production --namespace=production
+
+      - name: Wait for rollout
+        run: |
+          export KUBECONFIG=kubeconfig
+          kubectl rollout status deployment/devops-demo-api -n production --timeout=180s
+
+      - name: Smoke test production
+        run: |
+          sleep 15
+          curl -f https://api.example.com/health || exit 1
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":rocket: *Production deploy successful*\nVersion: `${{ steps.tag.outputs.tag }}`\nCommit: `${{ github.sha }}`\nBy: ${{ github.actor }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":red_circle: *Production deploy FAILED*\nVersion: `${{ steps.tag.outputs.tag }}`\nCommit: `${{ github.sha }}`\nBy: ${{ github.actor }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
