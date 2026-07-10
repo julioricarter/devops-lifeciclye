@@ -39,6 +39,12 @@ info "Ejecutando tests de integración..."
 npm run test:integration
 success "Tests de integración: PASSED"
 
+info "Verificando trazabilidad de historias de usuario..."
+cd ..
+node scripts/verify-traceability.js
+success "Trazabilidad: OK (docs/user-stories/ ↔ ciclo DevOps)"
+cd app
+
 info "Construyendo imagen Docker..."
 cd ..
 docker build -t devops-demo-api:local ./app --target production

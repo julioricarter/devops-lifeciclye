@@ -73,7 +73,40 @@ find devops-lifecycle -type f | sort
 
 ---
 
-### PASO 2 — Demostrar la etapa TEST (3 min)
+### PASO 2 — Historias de Usuario y Trazabilidad (2 min)
+
+```bash
+# Desde la raíz del proyecto
+node scripts/verify-traceability.js
+```
+
+**Qué mostrar:** el check en verde listando las 11 historias (`HU-01`..`HU-11`).
+
+Abrir `docs/user-stories/README.md` y luego una historia cualquiera, por
+ejemplo `docs/user-stories/HU-05-crear-producto.md`.
+
+**Explicar en voz alta:**
+> "La documentación funcional no es un Word aparte que nadie actualiza.
+> Cada historia de usuario declara, en este frontmatter, exactamente qué
+> archivo la implementa en cada una de las 8 etapas del ciclo: plan, código,
+> build, test, release, deploy, operación y monitoreo.
+>
+> Este script valida esos enlaces en cada push. Si alguien edita una
+> historia a mano — mueve un archivo, borra un test, cambia un criterio de
+> aceptación — y el resto del ciclo no se actualiza junto con eso, el
+> pipeline de CI falla aquí mismo, antes de llegar a los tests."
+
+**Demostración en vivo de que realmente detecta el desfase** (opcional, 30s):
+```bash
+# Romper un enlace a propósito
+sed -i "s#app/tests/unit/products.test.js#app/tests/unit/no-existe.test.js#" docs/user-stories/HU-03-listar-productos.md
+node scripts/verify-traceability.js   # falla con el archivo exacto que falta
+git checkout -- docs/user-stories/HU-03-listar-productos.md   # restaurar
+```
+
+---
+
+### PASO 3 — Demostrar la etapa TEST (3 min)
 
 ```bash
 cd devops-lifecycle/app
@@ -94,7 +127,7 @@ npm test
 
 ---
 
-### PASO 3 — Levantar la API en vivo (2 min)
+### PASO 4 — Levantar la API en vivo (2 min)
 
 ```bash
 # Desde la carpeta app/
@@ -118,7 +151,7 @@ Abrir el navegador y visitar estas URLs una por una:
 
 ---
 
-### PASO 4 — Demostrar el CRUD completo (3 min)
+### PASO 5 — Demostrar el CRUD completo (3 min)
 
 Con la API corriendo, abrir una segunda terminal y ejecutar:
 
@@ -151,7 +184,7 @@ Invoke-RestMethod http://localhost:3000/api/products/1
 
 ---
 
-### PASO 5 — Mostrar el pipeline CI/CD (3 min, sin ejecutar)
+### PASO 6 — Mostrar el pipeline CI/CD (3 min, sin ejecutar)
 
 Abrir `.github/workflows/ci.yml` en el editor.
 
@@ -178,9 +211,14 @@ Luego abrir `cd.yml`:
 > Para llegar a producción, un humano tiene que aprobar en GitHub.
 > Ese es el 'gate manual' — combina automatización con control humano."
 
+**Señalar el job `traceability`** al inicio de `ci.yml`:
+> "Este es el mismo check del Paso 2. Corre antes que los tests unitarios e
+> integración — si las historias de usuario no están sincronizadas con el
+> código, el pipeline ni siquiera llega a correr los tests."
+
 ---
 
-### PASO 6 — Mostrar la infraestructura como código (2 min, sin ejecutar)
+### PASO 7 — Mostrar la infraestructura como código (2 min, sin ejecutar)
 
 Abrir `infrastructure/terraform/main.tf` y `infrastructure/terraform/variables.tf`.
 
@@ -198,7 +236,7 @@ Abrir `kubernetes/base/deployment.yaml`:
 
 ---
 
-### PASO 7 — Mostrar el monitoreo (2 min, sin Docker / 5 min con Docker)
+### PASO 8 — Mostrar el monitoreo (2 min, sin Docker / 5 min con Docker)
 
 **Sin Docker** — abrir `monitoring/prometheus/rules/api_alerts.yml`:
 > "Esto define cuándo Prometheus debe gritar.
@@ -226,7 +264,7 @@ En Grafana navegar a **Dashboards → DevOps Demo API** y mostrar:
 
 ---
 
-### PASO 8 — Demostrar el rollback (2 min)
+### PASO 9 — Demostrar el rollback (2 min)
 
 ```bash
 # Simular un deploy fallido y rollback automático
@@ -269,10 +307,13 @@ bash scripts/deploy.sh 2.0.0-broken staging
 
 ```
 devops-lifecycle/
+├── docs/user-stories/README.md               ← Índice de historias de usuario
+├── docs/user-stories/HU-05-crear-producto.md ← Ejemplo de historia con trazabilidad a las 8 etapas
+├── scripts/verify-traceability.js            ← Check que valida esa trazabilidad
 ├── app/src/index.js                          ← La app: métricas integradas desde el inicio
-├── app/tests/unit/products.test.js           ← Cómo se ven los tests
+├── app/tests/unit/products.test.js           ← Cómo se ven los tests (con tags HU-03..HU-07)
 ├── app/Dockerfile                            ← Multi-stage build explicado
-├── .github/workflows/ci.yml                 ← Pipeline CI completo
+├── .github/workflows/ci.yml                 ← Pipeline CI completo (incluye job traceability)
 ├── .github/workflows/cd.yml                 ← Deploy automático con gate manual
 ├── kubernetes/base/deployment.yaml          ← Health checks + recursos + seguridad
 ├── kubernetes/base/hpa.yaml                 ← Auto-scaling declarativo
@@ -289,12 +330,13 @@ devops-lifecycle/
 |------|------|--------|
 | 0 | Preparación | antes |
 | 1 | Estructura del proyecto | 2 min |
-| 2 | Tests en vivo | 3 min |
-| 3 | API en vivo | 2 min |
-| 4 | CRUD completo | 3 min |
-| 5 | Pipeline CI/CD | 3 min |
-| 6 | Infraestructura como código | 2 min |
-| 7 | Monitoreo | 2-5 min |
-| 8 | Rollback | 2 min |
+| 2 | Historias de usuario y trazabilidad | 2 min |
+| 3 | Tests en vivo | 3 min |
+| 4 | API en vivo | 2 min |
+| 5 | CRUD completo | 3 min |
+| 6 | Pipeline CI/CD | 3 min |
+| 7 | Infraestructura como código | 2 min |
+| 8 | Monitoreo | 2-5 min |
+| 9 | Rollback | 2 min |
 | — | Preguntas | libre |
-| **Total** | | **~20 min** |
+| **Total** | | **~22 min** |
