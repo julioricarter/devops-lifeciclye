@@ -20,11 +20,20 @@ echo ""
 
 info "Verificando dependencias..."
 check_dependency docker
-check_dependency docker-compose || check_dependency "docker compose"
 check_dependency git
 check_dependency node
 check_dependency npm
-success "Todas las dependencias están disponibles"
+
+# Docker Desktop moderno trae el plugin "docker compose" (v2, sin guion);
+# instalaciones más viejas usan el binario standalone "docker-compose".
+if command -v docker-compose &>/dev/null; then
+  COMPOSE="docker-compose"
+elif docker compose version &>/dev/null; then
+  COMPOSE="docker compose"
+else
+  error "Ni 'docker-compose' ni el plugin 'docker compose' están disponibles. Instala Docker Desktop."
+fi
+success "Todas las dependencias están disponibles (usando: ${COMPOSE})"
 
 info "Instalando dependencias de la aplicación..."
 cd "$(dirname "$0")/../app"
@@ -51,7 +60,7 @@ docker build -t devops-demo-api:local ./app --target production
 success "Imagen Docker construida: devops-demo-api:local"
 
 info "Levantando stack completo (API + Prometheus + Grafana + AlertManager)..."
-docker-compose up -d
+$COMPOSE up -d
 success "Stack levantado"
 
 info "Esperando que los servicios estén saludables..."
@@ -79,5 +88,5 @@ echo "  Prometheus       http://localhost:9090"
 echo "  Grafana          http://localhost:3001  (admin/devops123)"
 echo "  AlertManager     http://localhost:9093"
 echo ""
-echo "  Para detener todo: docker-compose down"
+echo "  Para detener todo: ${COMPOSE} down"
 echo ""

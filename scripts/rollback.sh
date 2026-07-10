@@ -8,6 +8,12 @@ success() { echo -e "${GREEN}[OK]${NC}    $*"; }
 warning() { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*"; }
 
+if command -v docker-compose &>/dev/null; then
+  COMPOSE="docker-compose"
+else
+  COMPOSE="docker compose"
+fi
+
 echo ""
 echo "=============================================="
 echo -e "   ${RED}ROLLBACK EN PROGRESO${NC}"
@@ -24,7 +30,7 @@ fi
 info "Imagen anterior encontrada: devops-demo-api:${PREVIOUS_TAG}"
 info "Haciendo rollback a: devops-demo-api:${PREVIOUS_TAG}..."
 
-APP_VERSION="$PREVIOUS_TAG" docker-compose up -d --no-deps api
+APP_VERSION="$PREVIOUS_TAG" $COMPOSE up -d --no-deps api
 
 MAX_WAIT=30
 elapsed=0

@@ -7,6 +7,12 @@ info()    { echo -e "${BLUE}[INFO]${NC}  $*"; }
 success() { echo -e "${GREEN}[OK]${NC}    $*"; }
 error()   { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
+if command -v docker-compose &>/dev/null; then
+  COMPOSE="docker-compose"
+else
+  COMPOSE="docker compose"
+fi
+
 VERSION="${1:-}"
 ENVIRONMENT="${2:-staging}"
 
@@ -35,8 +41,8 @@ cd ..
 docker build -t "devops-demo-api:${VERSION}" ./app --target production
 success "Imagen construida: devops-demo-api:${VERSION}"
 
-info "Simulando rolling update (local con docker-compose)..."
-APP_VERSION="$VERSION" docker-compose up -d --no-deps api
+info "Simulando rolling update (local con ${COMPOSE})..."
+APP_VERSION="$VERSION" $COMPOSE up -d --no-deps api
 
 info "Verificando salud del nuevo deploy..."
 MAX_WAIT=30
@@ -51,8 +57,8 @@ until curl -sf http://localhost:3000/health > /dev/null 2>&1; do
   elapsed=$((elapsed + 2))
 done
 
-# Verificar version
-DEPLOYED_VERSION=$(curl -s http://localhost:3000 | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])" 2>/dev/null || echo "unknown")
+# Verificar version (node, no python3 — no es un requisito del proyecto)
+DEPLOYED_VERSION=$(curl -s http://localhost:3000 | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{console.log(JSON.parse(d).version)}catch(e){console.log('unknown')}})" 2>/dev/null || echo "unknown")
 
 echo ""
 success "Deploy exitoso!"

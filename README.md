@@ -187,6 +187,10 @@ ciclo debe actualizarse en consecuencia o el CI lo rechaza.
 
 ## Comandos Útiles
 
+> Los comandos usan `docker-compose` (binario standalone). Si tu instalación
+> de Docker Desktop solo trae el plugin v2, sustituye por `docker compose`
+> (sin guion) — los scripts de `scripts/` ya detectan cuál tienes disponible.
+
 ```bash
 # Ver logs de la API
 docker-compose logs -f api
