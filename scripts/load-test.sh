@@ -30,21 +30,21 @@ while [ $SECONDS -lt $end ]; do
   idx=$((count % ${#ENDPOINTS[@]}))
   entry="${ENDPOINTS[$idx]}"
   METHOD="${entry%% *}"
-  PATH="${entry#* }"
+  ROUTE="${entry#* }"
 
   if [ "$METHOD" = "POST" ]; then
     STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
       -H "Content-Type: application/json" \
       -d "{\"name\":\"Test Product ${count}\",\"price\":${RANDOM}}" \
-      "${BASE_URL}${PATH}")
+      "${BASE_URL}${ROUTE}")
   else
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}${PATH}")
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}${ROUTE}")
   fi
 
-  printf "[%s] %s %s -> %s\n" "$(date +%H:%M:%S)" "$METHOD" "$PATH" "$STATUS"
+  printf "[%s] %s %s -> %s\n" "$(date +%H:%M:%S)" "$METHOD" "$ROUTE" "$STATUS"
 
   count=$((count + 1))
-  sleep "$(echo "scale=3; 1 / $RPS" | bc)"
+  sleep "$(awk "BEGIN{printf \"%.3f\", 1/$RPS}")"
 done
 
 echo ""
