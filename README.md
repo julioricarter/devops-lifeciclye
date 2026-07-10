@@ -85,11 +85,13 @@ devops-lifecycle/
 │   ├── setup.sh                  # Inicializar entorno local completo
 │   ├── deploy.sh                 # Deploy con zero-downtime rolling update
 │   ├── rollback.sh               # Rollback automático a imagen anterior
-│   └── load-test.sh              # Generador de tráfico para ver métricas
+│   ├── load-test.sh              # Generador de tráfico para ver métricas
+│   └── verify-traceability.js    # Valida que las historias de usuario cubran las 8 etapas
 │
 ├── docs/
 │   ├── architecture.md           # Diagrama del sistema y flujo completo
-│   └── runbook.md                # Respuesta a incidentes y SLOs
+│   ├── runbook.md                # Respuesta a incidentes y SLOs
+│   └── user-stories/             # Documentación funcional por historia de usuario (HU-01..HU-11)
 │
 └── docker-compose.yml            # Stack local completo (6 servicios)
 ```
@@ -156,6 +158,30 @@ Prometheus scraping métricas cada 15s. Grafana con dashboard de RPS, error rate
 bash scripts/load-test.sh http://localhost:3000 120 20
 # Abre http://localhost:3001 en Grafana
 ```
+
+---
+
+## Historias de Usuario y Trazabilidad
+
+La documentación funcional está separada **por historia de usuario** en
+[`docs/user-stories/`](docs/user-stories/README.md) — 11 historias (`HU-01`
+a `HU-11`), una por cada funcionalidad real del sistema (health checks, CRUD
+de productos, métricas, deploy con gate manual, rollback automático, alertas).
+
+Cada historia declara explícitamente en qué archivo vive en las 8 etapas del
+ciclo (Plan/Code/Build/Test/Release/Deploy/Operate/Monitor). Un script,
+[`scripts/verify-traceability.js`](scripts/verify-traceability.js), corre en
+cada push/PR (job `traceability` en `ci.yml`) y **falla el pipeline** si una
+historia queda desincronizada del código: un artefacto enlazado que ya no
+existe, o un test que dejó de mencionar el ID de la historia.
+
+```bash
+node scripts/verify-traceability.js
+```
+
+Esto significa que si alguien edita una historia de usuario a mano —agrega un
+endpoint, cambia un criterio de aceptación, mueve un archivo—, el resto del
+ciclo debe actualizarse en consecuencia o el CI lo rechaza.
 
 ---
 

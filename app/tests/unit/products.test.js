@@ -3,6 +3,7 @@ const { app, server } = require('../../src/index');
 
 afterAll(() => server.close());
 
+// HU-03: Listar el catálogo de productos (docs/user-stories/HU-03-listar-productos.md)
 describe('GET /api/products', () => {
   it('returns list of products with total count', async () => {
     const res = await request(app).get('/api/products');
@@ -14,6 +15,7 @@ describe('GET /api/products', () => {
   });
 });
 
+// HU-04: Consultar el detalle de un producto por ID (docs/user-stories/HU-04-consultar-producto.md)
 describe('GET /api/products/:id', () => {
   it('returns a single product by id', async () => {
     const res = await request(app).get('/api/products/1');
@@ -30,6 +32,7 @@ describe('GET /api/products/:id', () => {
   });
 });
 
+// HU-05: Crear un nuevo producto (docs/user-stories/HU-05-crear-producto.md)
 describe('POST /api/products', () => {
   it('creates a new product', async () => {
     const payload = { name: 'New Widget', price: 19.99, stock: 50 };
@@ -52,6 +55,7 @@ describe('POST /api/products', () => {
   });
 });
 
+// HU-06: Actualizar un producto existente (docs/user-stories/HU-06-actualizar-producto.md)
 describe('PUT /api/products/:id', () => {
   it('updates an existing product', async () => {
     const res = await request(app).put('/api/products/1').send({ price: 39.99 });
@@ -66,6 +70,7 @@ describe('PUT /api/products/:id', () => {
   });
 });
 
+// HU-07: Eliminar un producto (docs/user-stories/HU-07-eliminar-producto.md)
 describe('DELETE /api/products/:id', () => {
   it('deletes a product and returns 204', async () => {
     const res = await request(app).delete('/api/products/2');

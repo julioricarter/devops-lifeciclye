@@ -36,12 +36,31 @@ jobs:
         run: npm run lint
 
   # ────────────────────────────────────────────────────────────────
+  # JOB 1b: User Story Traceability
+  # Verifica que docs/user-stories/*.md siga mapeado a artefactos reales
+  # de las 8 etapas del ciclo (ver docs/user-stories/README.md)
+  # ────────────────────────────────────────────────────────────────
+  traceability:
+    name: User Story Traceability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Verify user stories map to the full DevOps cycle
+        run: node scripts/verify-traceability.js
+
+  # ────────────────────────────────────────────────────────────────
   # JOB 2: Unit Tests
   # ────────────────────────────────────────────────────────────────
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint, traceability]
     steps:
       - uses: actions/checkout@v4
 
@@ -73,7 +92,7 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint, traceability]
     steps:
       - uses: actions/checkout@v4
 
